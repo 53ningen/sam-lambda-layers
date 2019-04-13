@@ -1,0 +1,2 @@
+S3Bucket=     # deploy target s3 bucket
+S3KeyPrefix=  # deploy target key prefix

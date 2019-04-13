@@ -1,0 +1,21 @@
+
+ARG1=$1
+if [ $# -ne 1 ] || [[ ! $ARG1 =~ ^(prod|dev)$ ]]; then
+  echo "usage: ./deploy [prod|dev]"
+  exit 1
+fi
+. ./config.$ARG1
+
+layers=("requests")
+for layer in $layers; do
+  pushd src/python36/layers/$layer/
+  docker run --rm -v "$PWD":/var/task -w /var/task lambci/lambda:build-python3.6 pip install -r requirements.txt -t python
+  popd
+done
+
+stage="${ARG1[@]^}"
+sam build
+sam package --output-template-file packaged.yaml --s3-bucket $S3Bucket --s3-prefix "$S3KeyPrefix"
+sam deploy --template-file packaged.yaml --stack-name ${stage}SamLambdaLayer --capabilities CAPABILITY_NAMED_IAM \
+  --parameter-overrides \
+    "Stage=$stage"

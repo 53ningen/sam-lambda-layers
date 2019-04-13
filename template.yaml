@@ -1,0 +1,64 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+    sam-lambda-layers
+
+Globals:
+  Function:
+    Timeout: 10
+    Runtime: python3.6
+    MemorySize: 128
+
+Parameters:
+  Stage:
+    Type: String
+    AllowedValues:
+      - Dev
+      - Prod
+
+Resources:
+  # IAM Role for Lambda Function
+  LambdaFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${Stage}LambdaFunctionRole
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  # Function Layers
+  RequestsLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub ${Stage}Requests
+      Description: Requests(python 3.x)
+      ContentUri: src/python36/layers/requests
+      RetentionPolicy: Retain
+      CompatibleRuntimes:
+        - python3.6
+        - python3.7
+
+
+  # Lambda Functions and Log Groups
+  HelloWorldFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${Stage}HelloWorld
+      CodeUri: src/python36/hello_world
+      Handler: app.lambda_handler
+      Role: !GetAtt LambdaFunctionRole.Arn
+      Layers:
+        - !Ref RequestsLayer
+  HelloWorldLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${Stage}HelloWorld
+      RetentionInDays: 7
